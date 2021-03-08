@@ -29,20 +29,31 @@ module SkipLogs
         region: ENV['AWS_REGION']
         )
 
-        
+        s3_bucket = s3.bucket(ENV['AWS_BUCKET_NAME'])
 
         s3.client.list_objects(bucket: ENV['AWS_BUCKET_NAME']).each do |response|
-            puts response.contents.map(&:key)
+            #puts response.contents.map(&:key)
             #grab filename returned and evaluate too date
             #Compare to last month, if so delete using key value
-            my_file_name_key = response.contents.map(&:key).first.to_s
-            filename_str = my_file_name_key.gsub(/_.+/i, "")
-            puts filename_str
-            my_date = DateTime.parse(filename_str)
-            puts my_date.month
-            my_current = DateTime.now
-            previous_month = my_current.prev_month
-            puts previous_month.month
+            my_files = response.contents.map(&:key)
+            my_files.each do |myf|
+                puts "Filename = #{myf}"
+                my_file_name_key = myf.to_s
+                filename_str = my_file_name_key.gsub(/_.+/i, "")
+                #puts filename_str
+                my_date = DateTime.parse(filename_str)
+                #puts "This filename has the month #{my_date.month}"
+                my_current = DateTime.now       
+                previous_month = my_current.prev_month
+                #puts "The previous month was #{previous_month.month}"
+
+                if my_date.month == previous_month.month
+                    puts "This file: #{myf} should be removed"
+                    obj = s3_bucket.object(myf)
+                    obj.delete
+                    puts "Now removed!"
+                end
+            end
 
         end
 
