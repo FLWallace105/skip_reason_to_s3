@@ -4,6 +4,7 @@ require 'active_record'
 require 'sinatra/activerecord/rake'
 
 require_relative 'export_skips'
+require_relative 'remove_old_logs'
 
 
 
@@ -29,4 +30,13 @@ namespace :export_skip_csv do
     end
   
     
+end
+
+namespace :remove_logs do
+    desc 'remove old skip_reasons logs from S3 bucket'
+    task :remove_old_logs do |t|
+        SkipLogs::Remover.new.remove_logs
+    end
+
+
 end

@@ -7,6 +7,7 @@ require 'active_record'
 require 'sinatra/activerecord'
 require 'csv'
 require 'aws-sdk-s3'
+require 'sendgrid-ruby'
 
 
 
@@ -15,7 +16,7 @@ Dir[File.join(__dir__, 'models', '*.rb')].each { |file| require file }
 
 module SkipProcess
   class Exporter
-    
+    include SendGrid
 
     def initialize
       
@@ -83,6 +84,33 @@ module SkipProcess
         body: skip_reason_csv
       }
     )
+
+
+      mail = SendGrid::Mail.new
+      mail.from = Email.new(email: 'test@example.com')
+      mail.subject = 'Skip Report'
+      personalization = Personalization.new
+      my_emails = ENV['SENDGRID_EMAIL_LIST'].split(', ')
+      my_emails.each do |mye|
+        personalization.add_to(Email.new(email: mye))
+        mail.add_personalization(personalization)
+      end
+      mail.add_content(Content.new(type: 'text/plain', value: 'See Attached CSV for Skips'))
+      attachment = Attachment.new
+      attachment.content = Base64.strict_encode64(skip_reason_csv)
+      attachment.type = 'application/csv'
+      attachment.filename = s3_filename
+      attachment.disposition = 'attachment'
+      attachment.content_id = 'Skip Report'
+      mail.add_attachment(attachment)
+
+
+      mail.reply_to = Email.new(email: 'test@example.com')
+      sg = SendGrid::API.new(api_key: ENV['SENDGRID_API_KEY'])
+      response = sg.client.mail._('send').post(request_body: mail.to_json)
+      puts response.status_code
+      puts response.body
+      puts response.headers
 
     end
 
